@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditor Time Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f8fafc;
+  --color-background-tertiary:#f1f5f9;
+  --color-text-primary:#0f172a;
+  --color-text-secondary:#64748b;
+  --color-border-tertiary:rgba(15,23,42,0.12);
+  --color-border-secondary:rgba(15,23,42,0.22);
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+  --font-sans:system-ui,-apple-system,sans-serif;
+  --font-mono:ui-monospace,monospace;
+  --acc:#3b82f6;--acc2:#1d4ed8;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --color-background-primary:#1e293b;
+    --color-background-secondary:#0f172a;
+    --color-background-tertiary:#020617;
+    --color-text-primary:#f1f5f9;
+    --color-text-secondary:#94a3b8;
+    --color-border-tertiary:rgba(241,245,249,0.1);
+    --color-border-secondary:rgba(241,245,249,0.2);
+  }
+  .badge.run{background:#14532d;color:#86efac}
+  .badge.stop{background:#451a03;color:#fcd34d}
+  .badge.rev{background:#1e3a5f;color:#93c5fd}
+  .badge.meet{background:#3b0764;color:#d8b4fe}
+  .badge.idle{background:#1e293b;color:#64748b}
+  .badge.interno{background:#4a044e;color:#f0abfc}
+  .badge.externo{background:#4c0519;color:#fda4af}
+  .badge.paused{background:#0c4a6e;color:#7dd3fc}
+}
+body{font-family:var(--font-sans);background:var(--color-background-tertiary);color:var(--color-text-primary);min-height:100vh;padding:0}
+.app-shell{max-width:860px;margin:0 auto;background:var(--color-background-primary);min-height:100vh;border-left:0.5px solid var(--color-border-tertiary);border-right:0.5px solid var(--color-border-tertiary)}
+.header{padding:16px 20px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:16px;font-weight:500}
+.tabs{display:flex;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
+.tab{padding:11px 20px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--color-text-secondary);border-bottom:2px solid transparent;transition:all .15s;font-family:var(--font-sans)}
+.tab.active{color:var(--color-text-primary);border-bottom-color:var(--acc);font-weight:500}
+.tab:hover:not(.active){color:var(--color-text-primary);background:var(--color-background-secondary)}
+.panel{display:none;padding:20px;gap:14px;flex-direction:column}
+.panel.active{display:flex}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.badge.run{background:#dcfce7;color:#15803d}
+.badge.stop{background:#fef3c7;color:#92400e}
+.badge.rev{background:#dbeafe;color:#1d4ed8}
+.badge.meet{background:#f3e8ff;color:#6b21a8}
+.badge.idle{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.badge.interno{background:#fce7f3;color:#9d174d}
+.badge.externo{background:#ffe4e6;color:#9f1239}
+.badge.paused{background:#e0f2fe;color:#0369a1}
+input[type=text],input[type=date],input[type=time],select,textarea{
+  width:100%;padding:8px 11px;font-size:13px;
+  border:0.5px solid var(--color-border-secondary);
+  border-radius:var(--border-radius-md);
+  background:var(--color-background-primary);
+  color:var(--color-text-primary);
+  font-family:var(--font-sans);
+  transition:border-color .15s
+}
+input:focus,select:focus{outline:none;border-color:var(--acc)}
+.btn{cursor:pointer;padding:8px 15px;font-size:13px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-family:var(--font-sans);font-weight:500;transition:all .12s;background:var(--color-background-primary);color:var(--color-text-primary)}
+.btn:hover{background:var(--color-background-secondary)}
+.btn.primary{background:var(--acc);color:#fff;border-color:var(--acc2)}
+.btn.primary:hover{background:var(--acc2)}
+.btn.success{background:#16a34a;color:#fff;border-color:#15803d}
+.btn.success:hover{background:#15803d}
+.btn.danger{background:#dc2626;color:#fff;border-color:#b91c1c}
+.btn.danger:hover{background:#b91c1c}
+.btn.warn{background:#d97706;color:#fff;border-color:#b45309}
+.btn.warn:hover{background:#b45309}
+.btn.purple{background:#7c3aed;color:#fff;border-color:#6d28d9}
+.btn.purple:hover{background:#6d28d9}
+.btn.sm{padding:5px 11px;font-size:12px}
+.proj-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px;background:var(--color-background-primary)}
+.proj-card.running{border-left:3px solid #16a34a}
+.proj-card.stopped{border-left:3px solid #d97706}
+.proj-card.review{border-left:3px solid #3b82f6}
+.proj-card.paused{border-left:3px solid #0369a1}
+.proj-title{font-size:14px;font-weight:500}
+.proj-meta{font-size:12px;color:var(--color-text-secondary);margin-top:3px}
+.proj-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.timeline{display:flex;flex-direction:column;gap:0;max-height:360px;overflow-y:auto;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md)}
+.tl-row{display:flex;gap:10px;align-items:flex-start;padding:7px 12px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.tl-row:last-child{border-bottom:none}
+.tl-row.lunch{background:var(--color-background-secondary)}
+.tl-time{font-size:11px;color:var(--color-text-secondary);min-width:42px;padding-top:2px;font-variant-numeric:tabular-nums}
+.tl-content{font-size:12px;color:var(--color-text-primary);line-height:1.6;flex:1}
+.tl-indent{margin-left:14px;margin-top:2px}
+.tl-row.tl-parent{background:var(--color-background-secondary)}
+.tl-row.tl-parent .tl-time{font-weight:600;color:var(--color-text-primary)}
+.tl-row.tl-child{padding-left:20px}
+.tl-row.tl-child .tl-time{color:var(--color-text-secondary)}
+.tl-evt{font-size:12px;line-height:1.7}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:13px 16px}
+.stat-val{font-size:20px;font-weight:500}
+.stat-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:3px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:22px;width:400px;max-width:92vw;display:flex;flex-direction:column;gap:13px}
+.modal h3{font-size:15px;font-weight:500}
+.divider{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:2px 0}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.auditor-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);background:var(--color-background-primary)}
+.empty{text-align:center;color:var(--color-text-secondary);font-size:13px;padding:36px 0}
+.clock{font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
+.proj-timer{font-size:12px;font-weight:500;color:var(--color-text-secondary);font-variant-numeric:tabular-nums;margin-top:4px}
+label{font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="header">
+    <h1><i class="ti ti-clock" aria-hidden="true"></i> Auditor Time Tracker</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="live-dot"></span>
+      <span class="clock" id="live-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('auditor')"><i class="ti ti-user" aria-hidden="true"></i> Mi Panel</button>
+    <button class="tab" onclick="showTab('admin')"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Admin</button>
+    <button class="tab" onclick="showTab('report')"><i class="ti ti-chart-bar" aria-hidden="true"></i> Reportes</button>
+  </div>
+
+  <!-- PANEL AUDITOR -->
+  <div id="tab-auditor" class="panel active">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:12px;color:var(--color-text-secondary)" id="date-display"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select id="sel-auditor" style="width:auto;min-width:200px" onchange="switchAuditor()">
+          <option value="">— Seleccionar auditor —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stat-grid" id="auditor-stats">
+      <div class="stat"><div class="stat-val" id="st-eff">0h 0m</div><div class="stat-lbl">Tiempo efectivo</div></div>
+      <div class="stat">
+        <div class="stat-val" id="st-stop">0h 0m</div><div class="stat-lbl">En stopper</div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-size:11px"><span class="badge interno" id="st-stop-int">0h 0m</span> #Interno</span>
+          <span style="font-size:11px"><span class="badge externo" id="st-stop-ext">0h 0m</span> #Externo</span>
+        </div>
+      </div>
+      <div class="stat"><div class="stat-val" id="st-meet">0h 0m</div><div class="stat-lbl">En reuniones</div></div>
+      <div class="stat"><div class="stat-val" id="st-proj">0</div><div class="stat-lbl">Proyectos activos</div></div>
+    </div>
+
+    <div class="row" style="gap:8px">
+      <input type="text" id="new-proj-name" placeholder="Nombre del proyecto (ej: BB-000 Créditos de consumo)" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')addProject()">
+      <button class="btn primary" onclick="addProject()"><i class="ti ti-plus" aria-hidden="true"></i> Iniciar proyecto</button>
+    </div>
+
+    <div id="projects-list" style="display:flex;flex-direction:column;gap:10px">
+      <div class="empty">No hay proyectos activos. Inicia uno arriba.</div>
+    </div>
+
+    <hr class="divider">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:500"><i class="ti ti-video" aria-hidden="true"></i> Reunión de Teams</span>
+      <button class="btn purple sm" id="btn-meeting" onclick="toggleMeeting()">Registrar reunión</button>
+    </div>
+    <div id="meeting-status" style="display:none;padding:10px 14px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);font-size:13px;color:var(--color-text-secondary)">
+      Reunión activa desde <strong id="meet-start-lbl">--</strong>
+    </div>
+
+    <hr class="divider">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span style="font-size:13px;font-weight:500">Timeline del día</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn sm" onclick="exportLogTxt()"><i class="ti ti-download" aria-hidden="true"></i> .txt</button>
+        <button class="btn sm" onclick="exportLogCsv()"><i class="ti ti-download" aria-hidden="true"></i> .csv</button>
+      </div>
+    </div>
+    <div class="timeline" id="timeline-view"><div class="empty">Sin eventos hoy.</div></div>
+  </div>
+
+  <!-- PANEL ADMIN -->
+  <div id="tab-admin" class="panel" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:15px;font-weight:500">Vista en tiempo real</span>
+      <button class="btn sm primary" onclick="addAuditorPrompt()"><i class="ti ti-user-plus" aria-hidden="true"></i> Nuevo auditor</button>
+    </div>
+    <div id="admin-list" style="display:flex;flex-direction:column;gap:8px">
+      <div class="empty">No hay auditores registrados.</div>
+    </div>
+  </div>
+
+  <!-- PANEL REPORTES / GRAFICOS -->
+  <div id="tab-report" class="panel" style="display:none">
+    <div class="row">
+      <select id="rep-auditor" style="flex:1" onchange="generateReport()">
+        <option value="">— Todos los auditores —</option>
+      </select>
+      <input type="date" id="rep-date" style="width:160px" onchange="generateReport()">
+      <button class="btn" onclick="exportReportCsv()"><i class="ti ti-download" aria-hidden="true"></i> CSV</button>
+    </div>
+    <div id="report-out">
+      <div class="empty">Selecciona un auditor y fecha para ver los gráficos.</div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+
+<script>
+const WORK_START=8*60,WORK_END=24*60,LUNCH_START=13*60,LUNCH_END=14*60,SNAP=30;
+let state={auditors:{},currentAuditor:null,currentMeeting:null};
+
+function save(){try{
+  localStorage.setItem('aud_tracker_v2',JSON.stringify(state.auditors));
+  localStorage.setItem('aud_tracker_session',JSON.stringify({
+    currentAuditor:state.currentAuditor,
+    currentMeeting:state.currentMeeting?{
+      start:state.currentMeeting.start,
+      startISO:state.currentMeeting.startDate?new Date(state.currentMeeting.startDate).toISOString():null,
+      reason:state.currentMeeting.reason
+    }:null
+  }));
+}catch(e){}}
+function load(){try{
+  const d=localStorage.getItem('aud_tracker_v2');if(d)state.auditors=JSON.parse(d);
+  const s=localStorage.getItem('aud_tracker_session');
+  if(s){const ss=JSON.parse(s)||{};
+    state.currentAuditor=ss.currentAuditor||null;
+    if(ss.currentMeeting){state.currentMeeting={
+      start:ss.currentMeeting.start,
+      startDate:ss.currentMeeting.startISO?new Date(ss.currentMeeting.startISO):new Date(),
+      reason:ss.currentMeeting.reason
+    };}
+  }
+}catch(e){}}
+function pad2(n){return(n<10?'0':'')+n;}
+function normDayKey(k){const p=String(k).split('-');if(p.length!==3)return k;return p[0]+'-'+pad2(parseInt(p[1]))+'-'+pad2(parseInt(p[2]));}
+function migrateDayKeys(){
+  // Normaliza claves de día antiguas (2026-6-8) al formato con ceros (2026-06-08)
+  Object.values(state.auditors).forEach(a=>{
+    if(!a.days)return;
+    const nd={};
+    Object.keys(a.days).forEach(k=>{nd[normDayKey(k)]=a.days[k];});
+    a.days=nd;
+  });
+}
+
+function nowMin(){const n=new Date();return n.getHours()*60+n.getMinutes();}
+function fmtTime(d){const h=d.getHours(),m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
+function fmtDur(min){if(min<=0)return'0h 0m';return Math.floor(min/60)+'h '+Math.round(min%60)+'m';}
+function todayKey(){const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function timeToMin(ts){const p=ts.split(':');return parseInt(p[0])*60+parseInt(p[1]);}
+function excludeLunch(s,e){return Math.max(0,(e-s)-Math.max(0,Math.min(e,LUNCH_END)-Math.max(s,LUNCH_START)));}
+
+function getOrCreateDay(aid,dk){
+  const a=state.auditors[aid];
+  if(!a.days)a.days={};
+  if(!a.days[dk])a.days[dk]={projects:{},snapshots:[],meetings:[]};
+  return a.days[dk];
+}
+function currentAuditorData(){return state.currentAuditor?state.auditors[state.currentAuditor]:null;}
+
+function minToHHMM(m){return pad2(Math.floor(m/60))+':'+pad2(m%60);}
+
+function addProject(){
+  const name=document.getElementById('new-proj-name').value.trim();
+  if(!name)return alert('Ingresa el nombre del proyecto.');
+  if(!state.currentAuditor)return alert('Selecciona un auditor primero.');
+  const nm=nowMin();
+  if(nm<WORK_START||nm>=WORK_END)return alert(`Fuera del horario laboral (${minToHHMM(WORK_START)}–${minToHHMM(WORK_END)}).`);
+  const dk=todayKey(),day=getOrCreateDay(state.currentAuditor,dk);
+  const now=new Date(),pid='proj_'+Date.now();
+  day.projects[pid]={id:pid,name,status:'running',startedAt:now.toISOString(),stoppedAt:null,stopReason:'',endedAt:null,events:[{t:now.toISOString(),type:'start'}]};
+  addSnap(state.currentAuditor,dk,'project_start',{pid,name});
+  document.getElementById('new-proj-name').value='';
+  save();render();
+}
+
+function addSnap(aid,dk,type,data){
+  getOrCreateDay(aid,dk).snapshots.push({ts:new Date().toISOString(),type,...data});
+}
+
+function setStatus(pid,status,extra,tipo){
+  const dk=todayKey(),day=getOrCreateDay(state.currentAuditor,dk),p=day.projects[pid];
+  if(!p)return;
+  const now=new Date();
+  // Al reanudar: guardar stopper cerrado con tipo
+  if(status==='running'&&p.status==='stopped'&&p.stoppedAt){
+    if(!p.stopperHistory)p.stopperHistory=[];
+    p.stopperHistory.push({
+      start:fmtTime(new Date(p.stoppedAt)),
+      end:fmtTime(now),
+      reason:p.stopReason||'Sin razón',
+      tipo:p.stopTipo||'interno',
+      startIso:p.stoppedAt,
+      endIso:now.toISOString()
+    });
+    p.stoppedAt=null;p.stopReason='';p.stopTipo='';
+  }
+  // Al mandar a revisión con stopper activo aún: cerrar el stopper también
+  if((status==='review'||status==='paused')&&p.status==='stopped'&&p.stoppedAt){
+    if(!p.stopperHistory)p.stopperHistory=[];
+    p.stopperHistory.push({
+      start:fmtTime(new Date(p.stoppedAt)),
+      end:fmtTime(now),
+      reason:p.stopReason||'Sin razón',
+      tipo:p.stopTipo||'interno',
+      startIso:p.stoppedAt,
+      endIso:now.toISOString()
+    });
+    p.stoppedAt=null;p.stopReason='';p.stopTipo='';
+  }
+  p.status=status;
+  if(status==='stopped'){p.stoppedAt=now.toISOString();p.stopReason=extra||'';p.stopTipo=tipo||'interno';}
+  if(status==='review'){p.endedAt=now.toISOString();}
+  if(status==='paused'){p.endedAt=now.toISOString();p.pauseReason=extra||'';}
+  p.events.push({t:now.toISOString(),type:status,...(extra?{reason:extra}:{}),...(tipo?{tipo}:{})});
+  addSnap(state.currentAuditor,dk,'status',{pid,status,reason:extra||'',tipo:tipo||''});
+  save();render();
+}
+
+function removeProject(pid){
+  if(!confirm('¿Eliminar este proyecto?'))return;
+  delete getOrCreateDay(state.currentAuditor,todayKey()).projects[pid];
+  save();render();
+}
+
+function showStopperModal(pid){
+  const p=getOrCreateDay(state.currentAuditor,todayKey()).projects[pid];
+  showModal(`<h3><i class="ti ti-alert-triangle"></i> Registrar Stopper</h3>
+    <p style="font-size:13px;color:var(--color-text-secondary)">Proyecto: <strong>${escHtml(p.name)}</strong></p>
+    <label>Tipo de stopper</label>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--color-text-primary)">
+        <input type="radio" name="stop-tipo" value="interno" checked style="width:auto"> <span class="badge interno">#Interno</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--color-text-primary)">
+        <input type="radio" name="stop-tipo" value="externo" style="width:auto"> <span class="badge externo">#Externo</span>
+      </label>
+    </div>
+    <label>Razón del stopper</label>
+    <input type="text" id="m-reason" placeholder="Ej: Falla de ambiente, credenciales expiradas...">
+    <div class="row" style="justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn warn" onclick="confirmStopper('${pid}')">Confirmar stopper</button>
+    </div>`);
+}
+
+function confirmStopper(pid){
+  const r=document.getElementById('m-reason').value.trim()||'Sin razón especificada';
+  const tipoEl=document.querySelector('input[name="stop-tipo"]:checked');
+  const tipo=tipoEl?tipoEl.value:'interno';
+  closeModal();setStatus(pid,'stopped',r,tipo);
+}
+function showPausarModal(pid){
+  const p=getOrCreateDay(state.currentAuditor,todayKey()).projects[pid];
+  showModal(`<h3><i class="ti ti-player-pause"></i> Pausar proyecto</h3>
+    <p style="font-size:13px;color:var(--color-text-secondary)">Proyecto: <strong>${escHtml(p.name)}</strong></p>
+    <label>Razón de pausa</label>
+    <input type="text" id="m-pause-reason" placeholder="Ej: Moverme a la oficina, continuo otro día...">
+    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:4px">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="confirmPausar('${pid}')">Confirmar pausa</button>
+    </div>`);
+}
+function confirmPausar(pid){
+  const r=(document.getElementById('m-pause-reason').value||'').trim()||'Sin razón';
+  closeModal();setStatus(pid,'paused',r);
+}
+
+
+function finishMeeting(){
+  // Cierra y registra la reunión activa del auditor actual
+  if(!state.currentMeeting||!state.currentAuditor||!state.auditors[state.currentAuditor])return;
+  const now=new Date(),dur=Math.round((now-new Date(state.currentMeeting.startDate))/60000);
+  const day=getOrCreateDay(state.currentAuditor,todayKey());
+  day.meetings.push({start:state.currentMeeting.start,end:fmtTime(now),reason:state.currentMeeting.reason,durationMin:dur});
+  addSnap(state.currentAuditor,todayKey(),'meeting_end',{start:state.currentMeeting.start,end:fmtTime(now),dur});
+  state.currentMeeting=null;
+  document.getElementById('meeting-status').style.display='none';
+  const btn=document.getElementById('btn-meeting');
+  btn.textContent='Registrar reunión';btn.className='btn purple sm';
+}
+
+function toggleMeeting(){
+  if(!state.currentAuditor){alert('Selecciona un auditor primero.');return;}
+  if(state.currentMeeting){
+    finishMeeting();
+    save();render();
+  } else {
+    showModal(`<h3><i class="ti ti-video"></i> Iniciar reunión de Teams</h3>
+      <label>Motivo (opcional)</label>
+      <input type="text" id="m-meet-reason" placeholder="Ej: Sync de equipo, revisión de hallazgos...">
+      <div class="row" style="justify-content:flex-end;gap:8px">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn purple" onclick="startMeeting()">Iniciar reunión</button>
+      </div>`);
+  }
+}
+
+function startMeeting(){
+  const reason=(document.getElementById('m-meet-reason')||{}).value||'Sin motivo';
+  closeModal();
+  const now=new Date();
+  state.currentMeeting={start:fmtTime(now),startDate:now,reason:reason.trim()||'Sin motivo'};
+  addSnap(state.currentAuditor,todayKey(),'meeting_start',{start:fmtTime(now),reason});
+  document.getElementById('meet-start-lbl').textContent=fmtTime(now)+' — '+reason;
+  document.getElementById('meeting-status').style.display='block';
+  const btn=document.getElementById('btn-meeting');
+  btn.textContent='Finalizar reunión';btn.className='btn danger sm';
+  save();render();
+}
+
+function calcTime(aid,dk){
+  const day=state.auditors[aid]?.days?.[dk];
+  if(!day)return{eff:0,stop:0,meet:0,stopInt:0,stopExt:0};
+  let eff=0,stop=0,meet=0,stopInt=0,stopExt=0;
+  (day.meetings||[]).forEach(m=>{meet+=Math.max(0,timeToMin(m.end)-timeToMin(m.start));});
+  // Reunión en curso: contarla en vivo
+  if(state.currentMeeting&&aid===state.currentAuditor&&dk===todayKey())
+    meet+=Math.max(0,nowMin()-timeToMin(state.currentMeeting.start));
+  Object.values(day.projects||{}).forEach(p=>{
+    let runS=null,stopS=null,stopTipoAct='interno';
+    (p.events||[]).forEach(ev=>{
+      const t=timeToMin(fmtTime(new Date(ev.t)));
+      if(ev.type==='start'||ev.type==='running'){if(stopS!==null){stop+=excludeLunch(stopS,t);stopS=null;}runS=t;}
+      else if(ev.type==='stopped'){if(runS!==null){eff+=excludeLunch(runS,t);runS=null;}stopS=t;stopTipoAct=ev.tipo||'interno';}
+      else if(ev.type==='review'||ev.type==='paused'){
+        if(runS!==null){eff+=excludeLunch(runS,t);runS=null;}
+        if(stopS!==null){stop+=excludeLunch(stopS,t);stopS=null;}
+      }
+    });
+    const now2=Math.min(timeToMin(fmtTime(new Date())),WORK_END);
+    if(runS!==null)eff+=excludeLunch(runS,now2);
+    if(stopS!==null)stop+=excludeLunch(stopS,now2);
+    // Sumar interno/externo desde stopperHistory (cerrados)
+    (p.stopperHistory||[]).forEach(sh=>{
+      const dur=Math.max(0,excludeLunch(timeToMin(sh.start),timeToMin(sh.end)));
+      if(sh.tipo==='externo')stopExt+=dur; else stopInt+=dur;
+    });
+    // Stopper activo aún
+    if(p.status==='stopped'&&p.stoppedAt){
+      const s=timeToMin(fmtTime(new Date(p.stoppedAt)));
+      const e=Math.min(timeToMin(fmtTime(new Date())),WORK_END);
+      const dur=excludeLunch(s,e);
+      if(p.stopTipo==='externo')stopExt+=dur; else stopInt+=dur;
+    }
+  });
+  return{eff:Math.max(0,eff),stop:Math.max(0,stop),meet:Math.max(0,meet),stopInt:Math.max(0,stopInt),stopExt:Math.max(0,stopExt)};
+}
+
+// ── Construccion centralizada de eventos del día (alimenta timeline y export TXT) ──
+function collectDayEvents(day,includeActiveMeeting){
+  const evs=[];
+  Object.values(day.projects||{}).forEach(p=>{
+    (p.events||[]).forEach(ev=>{
+      if(ev.type==='stopped')return; // los stoppers se arman aparte, con rango
+      const time=fmtTime(new Date(ev.t)),min=timeToMin(time);
+      let kind=null;
+      if(ev.type==='start')kind='start';
+      else if(ev.type==='running')kind='resume';
+      else if(ev.type==='review')kind='review';
+      else if(ev.type==='paused')kind='paused';
+      if(kind)evs.push({min,time,kind,project:p.name,reason:ev.reason||''});
+    });
+    // Stoppers cerrados: una sola entrada con su rango inicio-fin
+    (p.stopperHistory||[]).forEach(sh=>{
+      evs.push({min:timeToMin(sh.start),time:sh.start,kind:'stopper',project:p.name,reason:sh.reason||'Sin razón',tipo:sh.tipo||'interno',start:sh.start,end:sh.end});
+    });
+    // Stopper activo aun (sin fin todavia)
+    if(p.status==='stopped'&&p.stoppedAt){
+      const t=fmtTime(new Date(p.stoppedAt));
+      evs.push({min:timeToMin(t),time:t,kind:'stopper',project:p.name,reason:p.stopReason||'Sin razón',tipo:p.stopTipo||'interno',start:t,end:null});
+    }
+  });
+  (day.meetings||[]).forEach(m=>{
+    evs.push({min:timeToMin(m.start),time:m.start,kind:'meeting_start',reason:m.reason||'',mStart:m.start,mEnd:m.end});
+    evs.push({min:timeToMin(m.end),time:m.end,kind:'meeting_end',reason:m.reason||'',mStart:m.start,mEnd:m.end});
+  });
+  if(includeActiveMeeting&&state.currentMeeting){
+    const t=state.currentMeeting.start;
+    evs.push({min:timeToMin(t),time:t,kind:'meeting_active',reason:state.currentMeeting.reason||''});
+  }
+  evs.sort((a,b)=>a.min-b.min);
+  return evs;
+}
+// Evento -> HTML (timeline en pantalla)
+function eventHtml(e){
+  const cap=s=>(s||'interno').charAt(0).toUpperCase()+(s||'interno').slice(1);
+  if(e.kind==='start')return `<strong>${escHtml(e.project)}</strong> <span class="badge run"><i class="ti ti-player-play"></i> Iniciado</span>`;
+  if(e.kind==='resume')return `<strong>${escHtml(e.project)}</strong> <span class="badge run"><i class="ti ti-player-play"></i> Reanudado</span>`;
+  if(e.kind==='review')return `<strong>${escHtml(e.project)}</strong> <span class="badge rev"><i class="ti ti-send"></i> En revisión</span>`;
+  if(e.kind==='paused')return `<strong>${escHtml(e.project)}</strong> <span class="badge paused"><i class="ti ti-player-pause"></i> Pausado</span>${e.reason?` <span style="font-size:11px;color:var(--color-text-secondary)">${escHtml(e.reason)}</span>`:''}`;
+  if(e.kind==='stopper'){
+    const rango=e.end?`(${e.start}–${e.end})`:`(${e.start}–…)`;
+    return `<strong>${escHtml(e.project)}</strong> <span class="badge stop"><i class="ti ti-player-pause"></i> Stopper: ${escHtml(e.reason)} ${rango}</span> <span class="badge ${e.tipo}">#${cap(e.tipo)}</span>`;
+  }
+  if(e.kind==='meeting_start')return `<span class="badge meet"><i class="ti ti-video"></i> Reunión inicio · ${escHtml(e.reason)}</span>`;
+  if(e.kind==='meeting_end')return `<span class="badge meet"><i class="ti ti-video"></i> Reunión fin (${e.mStart}–${e.mEnd})</span>`;
+  if(e.kind==='meeting_active')return `<span class="badge meet"><i class="ti ti-video"></i> Reunión en curso · ${escHtml(e.reason)}</span>`;
+  return '';
+}
+// Evento -> texto plano (export TXT)
+function eventText(e){
+  const T=s=>(s||'interno').toUpperCase();
+  if(e.kind==='start')return `${e.project} — Iniciado`;
+  if(e.kind==='resume')return `${e.project} — Reanudado`;
+  if(e.kind==='review')return `${e.project} — En revisión`;
+  if(e.kind==='paused')return `${e.project} — Pausado${e.reason?': '+e.reason:''}`;
+  if(e.kind==='stopper'){
+    const rango=e.end?`(${e.start}–${e.end})`:`(${e.start}–en curso)`;
+    return `${e.project} — Stopper [#${T(e.tipo)}]: ${e.reason} ${rango}`;
+  }
+  if(e.kind==='meeting_start')return `Reunión inicio · ${e.reason}`;
+  if(e.kind==='meeting_end')return `Reunión fin (${e.mStart}–${e.mEnd})`;
+  if(e.kind==='meeting_active')return `Reunión en curso · ${e.reason}`;
+  return '';
+}
+
+function generateSlots(){
+  const s=[];
+  for(let m=WORK_START;m<WORK_END;m+=SNAP){
+    s.push((Math.floor(m/60)<10?'0':'')+Math.floor(m/60)+':'+(m%60===0?'00':'30'));
+  }
+  return s;
+}
+
+function render(){
+  renderProjects();renderTimeline();renderStats();renderAdmin();
+}
+
+function renderProjects(){
+  const c=document.getElementById('projects-list');
+  const a=currentAuditorData();
+  if(!a){c.innerHTML='<div class="empty">Selecciona un auditor para ver sus proyectos.</div>';return;}
+  const day=getOrCreateDay(state.currentAuditor,todayKey());
+  const projs=Object.values(day.projects||{});
+  if(!projs.length){c.innerHTML='<div class="empty">No hay proyectos activos. Inicia uno arriba.</div>';return;}
+  const bm={running:'run',stopped:'stop',review:'rev',paused:'paused'};
+  const lm={running:'En ejecución',stopped:'Stopper activo',review:'En revisión',paused:'Pausado'};
+  c.innerHTML=projs.map(p=>{
+    // FIX 4: badge de revisión muestra hora exacta inicio–fin
+    const badgeLabel=(p.status==='review'||p.status==='paused')
+      ?`${lm[p.status]||p.status} · ${fmtTime(new Date(p.startedAt))}–${p.endedAt?fmtTime(new Date(p.endedAt)):'--'}`
+      :lm[p.status]||p.status;
+    // Meta: inicio + razón stopper (solo si sigue en stopper)
+    const metaExtra=p.status==='stopped'&&p.stopReason?' · '+escHtml(p.stopReason):'';
+    return`<div class="proj-card ${p.status}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div class="proj-title">${escHtml(p.name)}</div>
+          <div class="proj-meta">Iniciado ${fmtTime(new Date(p.startedAt))}${metaExtra}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <span class="badge ${bm[p.status]}">${badgeLabel}</span>
+          <span class="proj-timer">${projTimer(p)}</span>
+        </div>
+      </div>
+      <div class="proj-actions">
+        ${p.status==='running'?`<button class="btn sm warn" onclick="showStopperModal('${p.id}')"><i class="ti ti-pause"></i> Stopper</button>`:''}
+        ${p.status==='stopped'?`<button class="btn sm success" onclick="setStatus('${p.id}','running')"><i class="ti ti-player-play"></i> Reanudar</button>`:''}
+        ${p.status!=='review'&&p.status!=='paused'?`<button class="btn sm primary" onclick="setStatus('${p.id}','review')"><i class="ti ti-send"></i> Mandar a revisión</button>`:''}
+        ${p.status!=='review'&&p.status!=='paused'?`<button class="btn sm" style="background:#0369a1;color:#fff;border-color:#0284c7" onclick="showPausarModal('${p.id}')"><i class="ti ti-player-pause"></i> Pausar</button>`:''}
+        <button class="btn sm danger" onclick="removeProject('${p.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function projTimer(p){
+  // Tiempo efectivo real (descuenta stoppers y almuerzo), coherente con los reportes
+  return fmtDur(calcProjEffective(p));
+}
+
+function renderTimeline(){
+  const c=document.getElementById('timeline-view');
+  const a=currentAuditorData();
+  if(!a){c.innerHTML='<div class="empty">Selecciona un auditor.</div>';return;}
+  const day=getOrCreateDay(state.currentAuditor,todayKey());
+  const projs=Object.values(day.projects||{});
+  const nowM=nowMin();
+  const events=collectDayEvents(day,true);
+
+  // Ventana de actividad: desde el primer evento/proyecto hasta ahora
+  const starts=projs.map(p=>timeToMin(fmtTime(new Date(p.startedAt))));
+  (day.meetings||[]).forEach(m=>starts.push(timeToMin(m.start)));
+  if(state.currentMeeting)starts.push(timeToMin(state.currentMeeting.start));
+  if(!starts.length&&!events.length){c.innerHTML='<div class="empty">Sin eventos registrados hoy.</div>';return;}
+  const firstSlot=starts.length?Math.floor(Math.min(...starts)/SNAP)*SNAP:nowM;
+
+  // Padres cada 30 min; hijos = eventos a su hora exacta dentro de la franja
+  let html='',hasAny=false;
+  generateSlots().forEach(slot=>{
+    const sm=timeToMin(slot);
+    if(sm>nowM||sm<firstSlot)return;
+    const isLunch=sm>=LUNCH_START&&sm<LUNCH_END;
+    const slotEvents=events.filter(e=>e.min>=sm&&e.min<sm+SNAP);
+    hasAny=true;
+    const parentContent=isLunch?'<span class="badge idle">Hora de descanso</span>':'';
+    html+=`<div class="tl-row tl-parent"><span class="tl-time">${slot}</span><div class="tl-content">${parentContent}</div></div>`;
+    slotEvents.forEach(e=>{
+      html+=`<div class="tl-row tl-child"><span class="tl-time">${e.time}</span><div class="tl-content tl-evt">${eventHtml(e)}</div></div>`;
+    });
+  });
+  c.innerHTML=hasAny?html:'<div class="empty">Sin eventos registrados hoy.</div>';
+}
+
+// Tiempo efectivo individual de un proyecto
+function calcProjEffective(p){
+  let eff=0,runS=null,stopS=null;
+  (p.events||[]).forEach(ev=>{
+    const t=timeToMin(fmtTime(new Date(ev.t)));
+    if(ev.type==='start'||ev.type==='running'){if(stopS!==null)stopS=null;runS=t;}
+    else if(ev.type==='stopped'){if(runS!==null){eff+=excludeLunch(runS,t);runS=null;}stopS=t;}
+    else if(ev.type==='review'||ev.type==='paused'){if(runS!==null){eff+=excludeLunch(runS,t);runS=null;}}
+  });
+  if(runS!==null){const now2=Math.min(timeToMin(fmtTime(new Date())),WORK_END);eff+=excludeLunch(runS,now2);}
+  return Math.max(0,eff);
+}
+// Tiempo en stopper individual de un proyecto
+function calcProjStopper(p){
+  let interno=0,externo=0;
+  (p.stopperHistory||[]).forEach(sh=>{
+    const dur=Math.max(0,excludeLunch(timeToMin(sh.start),timeToMin(sh.end)));
+    if((sh.tipo||'interno')==='externo')externo+=dur; else interno+=dur;
+  });
+  if(p.status==='stopped'&&p.stoppedAt){
+    const s=timeToMin(fmtTime(new Date(p.stoppedAt)));
+    const e=Math.min(timeToMin(fmtTime(new Date())),WORK_END);
+    const dur=excludeLunch(s,e);
+    if((p.stopTipo||'interno')==='externo')externo+=dur; else interno+=dur;
+  }
+  interno=Math.max(0,interno);externo=Math.max(0,externo);
+  return{total:interno+externo,interno,externo};
+}
+function renderStats(){
+  const a=currentAuditorData();
+  if(!a)return;
+  const{eff,stop,meet,stopInt,stopExt}=calcTime(state.currentAuditor,todayKey());
+  const day=getOrCreateDay(state.currentAuditor,todayKey());
+  document.getElementById('st-eff').textContent=fmtDur(eff);
+  document.getElementById('st-stop').textContent=fmtDur(stop);
+  document.getElementById('st-stop-int').textContent=fmtDur(stopInt);
+  document.getElementById('st-stop-ext').textContent=fmtDur(stopExt);
+  document.getElementById('st-meet').textContent=fmtDur(meet);
+  document.getElementById('st-proj').textContent=Object.values(day.projects||{}).filter(p=>p.status!=='review'&&p.status!=='paused').length;
+}
+
+function renderAdmin(){
+  const c=document.getElementById('admin-list');
+  const auds=Object.values(state.auditors);
+  if(!auds.length){c.innerHTML='<div class="empty">No hay auditores registrados.</div>';return;}
+  const dk=todayKey();
+  c.innerHTML=auds.map(a=>{
+    const projs=Object.values(a.days?.[dk]?.projects||{});
+    const{eff,stop}=calcTime(a.id,dk);
+    const run=projs.filter(p=>p.status==='running').length;
+    const stp=projs.filter(p=>p.status==='stopped').length;
+    const rev=projs.filter(p=>p.status==='review').length;
+    return`<div class="auditor-row">
+      <div>
+        <div style="font-size:14px;font-weight:500">${escHtml(a.name)}</div>
+        <div style="font-size:12px;margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
+          ${run?`<span class="badge run">${run} ejecutando</span>`:''}
+          ${stp?`<span class="badge stop">${stp} stopper</span>`:''}
+          ${rev?`<span class="badge rev">${rev} en revisión</span>`:''}
+          ${!projs.length?'<span class="badge idle">Sin actividad hoy</span>':''}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:500">${fmtDur(eff)} efectivo</div>
+        ${stop?`<div style="font-size:11px;color:var(--color-text-secondary)">${fmtDur(stop)} stopper</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addAuditorPrompt(){
+  showModal(`<h3><i class="ti ti-user-plus"></i> Nuevo auditor</h3>
+    <label>Nombre completo</label>
+    <input type="text" id="m-aud-name" placeholder="Ej: María González">
+    <div class="row" style="justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="confirmAddAuditor()">Agregar</button>
+    </div>`);
+  setTimeout(()=>document.getElementById('m-aud-name')?.focus(),100);
+}
+
+function confirmAddAuditor(){
+  const name=(document.getElementById('m-aud-name')||{}).value?.trim();
+  if(!name)return;
+  const id='aud_'+Date.now();
+  state.auditors[id]={id,name,days:{}};
+  closeModal();save();renderAuditorSelects();renderAdmin();
+}
+
+function renderAuditorSelects(){
+  const auds=Object.values(state.auditors);
+  ['sel-auditor','rep-auditor'].forEach(sid=>{
+    const s=document.getElementById(sid);
+    const prev=s.value;
+    s.innerHTML=sid==='rep-auditor'?'<option value="">— Todos los auditores —</option>':'<option value="">— Seleccionar auditor —</option>';
+    auds.forEach(a=>{s.innerHTML+=`<option value="${a.id}">${escHtml(a.name)}</option>`;});
+    if(prev)s.value=prev;
+  });
+}
+
+function switchAuditor(){
+  // Si hay reunión en curso, cerrarla y registrarla en el auditor anterior (no perderla)
+  finishMeeting();
+  state.currentAuditor=document.getElementById('sel-auditor').value||null;
+  save();render();
+}
+
+function generateReport(){
+  const aid=document.getElementById('rep-auditor').value;
+  const dt=document.getElementById('rep-date').value;
+  const c=document.getElementById('report-out');
+  if(!aid&&!dt){c.innerHTML='<div class="empty">Selecciona un auditor y/o fecha.</div>';return;}
+  const targets=aid?[state.auditors[aid]]:Object.values(state.auditors);
+  if(!targets.filter(Boolean).length){c.innerHTML='<div class="empty">No hay auditores.</div>';return;}
+  let html='';
+  targets.filter(Boolean).forEach(a=>{
+    const dks=dt?[dt]:Object.keys(a.days||{}).sort().reverse();
+    dks.forEach(dk=>{
+      const day=a.days?.[dk];if(!day)return;
+      const{eff,stop,meet,stopInt,stopExt}=calcTime(a.id,dk);
+      const projs=Object.values(day.projects||{});
+      const totalWork=WORK_END-WORK_START-(LUNCH_END-LUNCH_START); // 480 min
+      const effPct=Math.round((eff/totalWork)*100);
+      const stopPct=Math.round((stop/totalWork)*100);
+      const meetPct=Math.round((meet/totalWork)*100);
+      const idlePct=Math.max(0,100-effPct-stopPct-meetPct);
+      // Donut chart SVG inline
+      function donutArc(pct,offset,color){
+        if(pct<=0)return'';
+        const r=54,circ=2*Math.PI*r;
+        const dash=circ*(pct/100),gap=circ-dash;
+        return`<circle cx="64" cy="64" r="${r}" fill="none" stroke="${color}" stroke-width="18" stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}" stroke-dashoffset="${(-circ*(offset/100)).toFixed(2)}" stroke-linecap="butt"/>`;
+      }
+      const donut=`<svg viewBox="0 0 128 128" width="120" height="120" style="transform:rotate(-90deg)">
+        <circle cx="64" cy="64" r="54" fill="none" stroke="var(--color-background-secondary)" stroke-width="18"/>
+        ${donutArc(effPct,0,'#16a34a')}
+        ${donutArc(stopPct,effPct,'#d97706')}
+        ${donutArc(meetPct,effPct+stopPct,'#7c3aed')}
+        ${donutArc(idlePct,effPct+stopPct+meetPct,'#64748b')}
+      </svg>`;
+      // Bar chart for projects
+      const projMax=Math.max(...projs.map(x=>calcProjEffective(x)+calcProjStopper(x).total),1);
+      const bmRep={running:'run',stopped:'stop',review:'rev',paused:'paused'};
+      const lmRep={running:'En ejecución',stopped:'Stopper activo',review:'En revisión',paused:'Pausado'};
+      const projBars=projs.map(p=>{
+        const pe=calcProjEffective(p),ps=calcProjStopper(p);
+        const ew=Math.round((pe/projMax)*100),sw=Math.round((ps.total/projMax)*100);
+        const bm=bmRep,lm=lmRep;
+        return`<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:12px;font-weight:500;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(p.name)}">${escHtml(p.name)}</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="badge ${bm[p.status]||'idle'}" style="font-size:10px">${lm[p.status]||p.status}</span>
+              <span style="font-size:11px;color:var(--color-text-secondary)">${fmtDur(pe)} ef · ${fmtDur(ps.total)} st${ps.interno?` · #I ${fmtDur(ps.interno)}`:''}${ps.externo?` · #E ${fmtDur(ps.externo)}`:''}</span>
+            </div>
+          </div>
+          <div style="height:10px;border-radius:5px;background:var(--color-background-secondary);overflow:hidden;display:flex">
+            ${ew>0?`<div style="width:${ew}%;background:#16a34a;height:100%"></div>`:''}
+            ${sw>0?`<div style="width:${sw}%;background:#d97706;height:100%;margin-left:1px"></div>`:''}
+          </div>
+          ${(p.stopperHistory||[]).map(sh=>`<div style="font-size:10px;color:var(--color-text-secondary);margin-top:2px;margin-left:4px">⏸ ${sh.start}–${sh.end}: ${escHtml(sh.reason)}</div>`).join('')}
+        </div>`;
+      }).join('');
+      html+=`<div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div><strong style="font-size:15px">${escHtml(a.name)}</strong> <span style="font-size:13px;color:var(--color-text-secondary)">· ${dk}</span></div>
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+          <div style="position:relative;flex-shrink:0">
+            ${donut}
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:500">${effPct}%<span style="font-size:9px;color:var(--color-text-secondary)">efectivo</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:140px">
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:#16a34a;flex-shrink:0"></div><span style="font-size:12px">Efectivo: <strong>${fmtDur(eff)}</strong></span></div>
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:#d97706;flex-shrink:0"></div><span style="font-size:12px">Stopper: <strong>${fmtDur(stop)}</strong></span></div>
+            <div style="margin-left:18px;display:flex;gap:10px;margin-bottom:2px"><span style="font-size:11px"><span class="badge interno">#Interno</span> <strong>${fmtDur(stopInt)}</strong></span><span style="font-size:11px"><span class="badge externo">#Externo</span> <strong>${fmtDur(stopExt)}</strong></span></div>
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:#7c3aed;flex-shrink:0"></div><span style="font-size:12px">Reuniones: <strong>${fmtDur(meet)}</strong></span></div>
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:#64748b;flex-shrink:0"></div><span style="font-size:12px">Sin actividad: <strong>${fmtDur(Math.max(0,totalWork-eff-stop-meet))}</strong></span></div>
+          </div>
+        </div>
+        ${projs.length?`<div style="border-top:0.5px solid var(--color-border-tertiary);padding-top:12px"><div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:10px">PROYECTOS</div>${projBars}</div>`:''}
+        ${day.meetings?.length?`<div style="border-top:0.5px solid var(--color-border-tertiary);padding-top:10px;margin-top:4px"><div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">REUNIONES</div>${day.meetings.map(m=>`<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px"><span class="badge meet" style="font-size:10px">📹 ${m.start}–${m.end}</span> ${escHtml(m.reason)}</div>`).join('')}</div>`:''}</div>`;
+    });
+  });
+  c.innerHTML=html||'<div class="empty">Sin datos para los filtros seleccionados.</div>';
+}
+
+function buildLogLines(aid,dk){
+  const a=state.auditors[aid];
+  const day=a?.days?.[dk];
+  if(!day)return'Sin datos.';
+  const projs=Object.values(day.projects||{});
+  const isToday=dk===todayKey();
+  const cutoff=isToday?nowMin():WORK_END;
+  const events=collectDayEvents(day,isToday&&aid===state.currentAuditor);
+
+  let log=`REPORTE DE TIEMPO\nAuditor: ${a.name}\nFecha: ${dk}\n${'='.repeat(50)}\n\n`;
+
+  // Línea de tiempo: padres cada 30 min, hijos a la hora exacta (mismo estilo que en pantalla)
+  const starts=projs.map(p=>timeToMin(fmtTime(new Date(p.startedAt))));
+  (day.meetings||[]).forEach(m=>starts.push(timeToMin(m.start)));
+  const firstSlot=starts.length?Math.floor(Math.min(...starts)/SNAP)*SNAP:0;
+  generateSlots().forEach(slot=>{
+    const sm=timeToMin(slot);
+    if(sm>cutoff||sm<firstSlot)return;
+    const isLunch=sm>=LUNCH_START&&sm<LUNCH_END;
+    const slotEvents=events.filter(e=>e.min>=sm&&e.min<sm+SNAP);
+    log+=`${slot}\n`;
+    if(isLunch)log+=`  · Hora de descanso\n`;
+    slotEvents.forEach(e=>{log+=`  ${e.time}  ${eventText(e)}\n`;});
+  });
+
+  const{eff,stop,meet,stopInt,stopExt}=calcTime(aid,dk);
+  log+=`\nRESUMEN\n${'='.repeat(50)}\nTiempo efectivo : ${fmtDur(eff)}\nEn stopper      : ${fmtDur(stop)} (#Interno: ${fmtDur(stopInt)} / #Externo: ${fmtDur(stopExt)})\nEn reuniones    : ${fmtDur(meet)}\n`;
+
+  if(projs.length){
+    log+=`\nDETALLE POR PROYECTO\n${'='.repeat(50)}\n`;
+    projs.forEach(p=>{
+      const pEff=calcProjEffective(p);
+      const pStop=calcProjStopper(p);
+      const statusLbl={running:'En ejecución',stopped:'En stopper',review:'En revisión',paused:'Pausado'}[p.status]||p.status;
+      log+=`\n  ${p.name}\n`;
+      log+=`    Estado   : ${statusLbl}\n`;
+      log+=`    Inicio   : ${fmtTime(new Date(p.startedAt))}\n`;
+      if(p.endedAt)log+=`    Fin      : ${fmtTime(new Date(p.endedAt))}\n`;
+      log+=`    Efectivo : ${fmtDur(pEff)}\n`;
+      if(pStop.total>0)log+=`    Stopper  : ${fmtDur(pStop.total)} (#Interno: ${fmtDur(pStop.interno)} / #Externo: ${fmtDur(pStop.externo)})\n`;
+      (p.stopperHistory||[]).forEach(sh=>{
+        log+=`    > Stopper [#${(sh.tipo||'interno').toUpperCase()}] ${sh.start}–${sh.end}: ${sh.reason}\n`;
+      });
+      if(p.status==='stopped'&&p.stopReason)log+=`    > Stopper activo [#${(p.stopTipo||'interno').toUpperCase()}] desde ${fmtTime(new Date(p.stoppedAt))}: ${p.stopReason}\n`;
+    });
+  }
+  return log;
+}
+
+function exportLogTxt(){
+  if(!state.currentAuditor)return alert('Selecciona un auditor primero.');
+  const a=currentAuditorData();
+  downloadFile(buildLogLines(state.currentAuditor,todayKey()),`tracking_${a.name.replace(/\s+/g,'_')}_${todayKey()}.txt`,'text/plain');
+}
+
+function exportLogCsv(){
+  if(!state.currentAuditor)return alert('Selecciona un auditor primero.');
+  const a=currentAuditorData(),dk=todayKey();
+  const day=a.days?.[dk];
+  const projs=Object.values(day?.projects||{});
+  if(!projs.length)return alert('No hay proyectos registrados hoy para exportar.');
+  const meetTotal=(day.meetings||[]).reduce((s,m)=>s+Math.max(0,timeToMin(m.end)-timeToMin(m.start)),0);
+  let csv='Auditor,Fecha,Proyecto,Estado,Inicio,Fin,Tiempo efectivo,Stopper total,Stopper #Interno,Stopper #Externo,Reuniones (dia)\n';
+  projs.forEach(p=>{
+    const pe=calcProjEffective(p),ps=calcProjStopper(p);
+    csv+=`"${csvEsc(a.name)}","${dk}","${csvEsc(p.name)}","${p.status}","${fmtTime(new Date(p.startedAt))}","${p.endedAt?fmtTime(new Date(p.endedAt)):''}","${fmtDur(pe)}","${fmtDur(ps.total)}","${fmtDur(ps.interno)}","${fmtDur(ps.externo)}","${fmtDur(meetTotal)}"\n`;
+  });
+  downloadFile(csv,`tracking_${a.name.replace(/\s+/g,'_')}_${dk}.csv`,'text/csv');
+}
+
+function exportReportCsv(){
+  const aid=document.getElementById('rep-auditor').value;
+  const dt=document.getElementById('rep-date').value;
+  const targets=aid?[state.auditors[aid]]:Object.values(state.auditors);
+  let csv='Auditor,Fecha,Proyecto,Estado,Inicio,Fin,Tiempo efectivo,Stopper total,Stopper #Interno,Stopper #Externo,Reuniones (dia)\n';
+  let rows=0;
+  targets.filter(Boolean).forEach(a=>{
+    const dks=dt?[dt]:Object.keys(a.days||{}).sort();
+    dks.forEach(dk=>{
+      const day=a.days?.[dk];if(!day)return;
+      const meetTotal=(day.meetings||[]).reduce((s,m)=>s+Math.max(0,timeToMin(m.end)-timeToMin(m.start)),0);
+      Object.values(day.projects||{}).forEach(p=>{
+        const pe=calcProjEffective(p),ps=calcProjStopper(p);
+        csv+=`"${csvEsc(a.name)}","${dk}","${csvEsc(p.name)}","${p.status}","${fmtTime(new Date(p.startedAt))}","${p.endedAt?fmtTime(new Date(p.endedAt)):''}","${fmtDur(pe)}","${fmtDur(ps.total)}","${fmtDur(ps.interno)}","${fmtDur(ps.externo)}","${fmtDur(meetTotal)}"\n`;
+        rows++;
+      });
+    });
+  });
+  if(!rows)return alert('Sin datos para los filtros seleccionados.');
+  downloadFile(csv,`reporte_auditores_${todayKey()}.csv`,'text/csv');
+}
+
+function downloadFile(content,filename,type){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+}
+
+function showModal(html){
+  closeModal();
+  const bg=document.createElement('div');bg.className='modal-bg';bg.id='modal-bg';
+  bg.innerHTML=`<div class="modal">${html}</div>`;
+  bg.addEventListener('click',e=>{if(e.target===bg)closeModal();});
+  bg.addEventListener('keydown',e=>{
+    if(e.key==='Escape')closeModal();
+    else if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type==='text'){
+      e.preventDefault();
+      bg.querySelector('.btn.primary,.btn.warn,.btn.purple')?.click(); // botón de confirmación
+    }
+  });
+  document.getElementById('modal-container').appendChild(bg);
+  setTimeout(()=>bg.querySelector('input')?.focus(),80);
+}
+function closeModal(){document.getElementById('modal-bg')?.remove();}
+
+function showTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['auditor','admin','report'][i]===t));
+  ['auditor','admin','report'].forEach(id=>{
+    document.getElementById('tab-'+id).style.display=id===t?'flex':'none';
+  });
+  if(t==='admin')renderAdmin();
+  if(t==='report'){
+    const rd=document.getElementById('rep-date');
+    if(!rd.value)rd.value=todayKey(); // solo inicializar, no pisar la selección del usuario
+    if(Object.keys(state.auditors).length===1){const firstId=Object.keys(state.auditors)[0];document.getElementById('rep-auditor').value=firstId;}
+    generateReport();
+  }
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function csvEsc(s){return String(s).replace(/"/g,'""');}
+
+function startClock(){
+  function tick(){
+    const now=new Date();
+    document.getElementById('live-clock').textContent=now.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('date-display').textContent=now.toLocaleDateString('es',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  }
+  tick();setInterval(tick,1000);
+}
+
+function startAutoRefresh(){
+  setInterval(()=>{
+    if(!state.currentAuditor)return;
+    const nm=nowMin();
+    if(nm<WORK_START||nm>=WORK_END)return;
+    render();
+  },30000);
+}
+
+load();
+migrateDayKeys();
+startClock();
+startAutoRefresh();
+renderAuditorSelects();
+// Restaurar sesión (auditor seleccionado y reunión en curso) tras recargar
+if(state.currentAuditor&&state.auditors[state.currentAuditor]){
+  document.getElementById('sel-auditor').value=state.currentAuditor;
+  if(state.currentMeeting){
+    document.getElementById('meet-start-lbl').textContent=state.currentMeeting.start+' — '+state.currentMeeting.reason;
+    document.getElementById('meeting-status').style.display='block';
+    const btn=document.getElementById('btn-meeting');btn.textContent='Finalizar reunión';btn.className='btn danger sm';
+  }
+  render();
+}else{state.currentAuditor=null;state.currentMeeting=null;}
+renderAdmin();
+document.getElementById('rep-date').value=todayKey();
+</script>
+</body>
+</html>
